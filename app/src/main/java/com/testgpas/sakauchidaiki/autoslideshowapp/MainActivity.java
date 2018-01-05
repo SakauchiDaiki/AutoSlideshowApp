@@ -18,6 +18,8 @@ import android.util.Log;
 import java.util.Timer;
 import java.util.TimerTask;
 import android.os.Handler;
+import android.widget.Toast;
+import android.os.Process;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -34,11 +36,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Handler mHandler = new Handler();
 
     // C言語とはenumの仕様が違うらしい。。
-    protected enum IMG_ID {
-        DEFAULT,
-        NEXT,
-        PREVIOUS
-    };
+//    protected enum IMG_ID {
+//        DEFAULT,
+//        NEXT,
+//        PREVIOUS
+//    };
 
 
     @Override
@@ -142,16 +144,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     getContentsInfo(0);
                 }
+                else{
+                    // 許可されなかった場合、アプリを終了
+                    finish();
+                    Process.killProcess(Process.myPid());
+                }
                 break;
             default:
                 break;
         }
     }
-
-private void autoSlide(){
-
-}
-
 
 
 // permission拒否されたら or cursor = nullだったら
@@ -191,18 +193,26 @@ private void autoSlide(){
                 }
             }
 
-            // indexからIDを取得し、そのIDから画像のURIを取得する
-            int fieldIndex = mCursor.getColumnIndex(MediaStore.Images.Media._ID);
-            Long id = mCursor.getLong(fieldIndex);
-            Uri imageUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
+            if(mCursor != null) {
 
-            Log.d("ANDROID", "URI : " + imageUri.toString());
+                // indexからIDを取得し、そのIDから画像のURIを取得する
+                int fieldIndex = mCursor.getColumnIndex(MediaStore.Images.Media._ID);
+                Long id = mCursor.getLong(fieldIndex);
+                Uri imageUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
 
-            ImageView imageVIew = (ImageView) findViewById(R.id.imageView);
-            imageVIew.setImageURI(imageUri);
+                Log.d("ANDROID", "URI : " + imageUri.toString());
+
+                ImageView imageVIew = (ImageView) findViewById(R.id.imageView);
+                imageVIew.setImageURI(imageUri);
+            }
+            else{
+                Toast toast = Toast.makeText(MainActivity.this, "カーソルの値が不正です", Toast.LENGTH_LONG);
+                toast.show();
+            }
         }
         else{
-            Log.d("ANDROID", "[例外処理] 不正な値が渡されています");
+            Toast toast = Toast.makeText(MainActivity.this, "不正な処理が指定されています", Toast.LENGTH_LONG);
+            toast.show();
         }
 
     }
