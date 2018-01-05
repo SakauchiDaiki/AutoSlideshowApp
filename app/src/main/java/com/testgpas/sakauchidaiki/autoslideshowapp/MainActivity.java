@@ -15,6 +15,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.util.Log;
+import java.util.Timer;
+import java.util.TimerTask;
+import android.os.Handler;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -25,6 +28,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Cursor mCursor;
     // 再生・停止ボタンのフラグ
     boolean resumeFlag = false;
+
+    // タイマー（自動再生）用の変数
+    Timer mTimer;
+    Handler mHandler = new Handler();
 
     // C言語とはenumの仕様が違うらしい。。
     protected enum IMG_ID {
@@ -52,7 +59,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // パーミッションの許可状態を確認する
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                 // 許可されている
-                //mCursor.moveToFirst();
                 getContentsInfo(0);
             } else {
                 // 許可されていないので許可ダイアログを表示する
@@ -60,7 +66,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             // Android 5系以下の場合
         } else {
-            //mCursor.moveToFirst();
             getContentsInfo(0);
         }
 
@@ -71,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         try {
 
-            // 停止中のみ操作可能
+            // 「進む」「戻る」は停止中のみ操作可能
             if(!resumeFlag) {
                 // 進むボタン
                 if (v.getId() == R.id.goNext_button) {
@@ -83,18 +88,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
 
-            // 再生・停止ボタン
+            // 「再生」「停止」
             if (v.getId() == R.id.resume_stop_button) {
-                // 再生・停止
                 Button resume_stop_button = (Button) findViewById(R.id.resume_stop_button);
+
                 //　停止中に押したら再生を開始し、ボタンの表示を"停止"に
                 if(!resumeFlag) {
 
+                    // resumeFlag = trueのとき、ずっと稼働している必要あり
+
+                    // タイマーの作成
+                    mTimer = new Timer();
+                    // タイマーの始動
+                    mTimer.schedule(new TimerTask() {
+                                        @Override
+                                        public void run() {
+                                            // ここは最初に始動するポイントではないのか？？ここにgetContentInfo(1);記述したらエラー
+                                            mHandler.post(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    // 次の画像表示、なければ最初の画像に
+                                                   getContentsInfo(1);
+                                                }
+                                            });
+                                        }
+                                    }, 2000, 2000); // 最初に始動させるまで2000ミリ秒、ループの感覚も2000ミリ秒に
+
                     resume_stop_button.setText("停止");
                 }
+
                 // 再生中に押したら停止し、ボタンの表示を"再生"に
                 else{
-
+                    mTimer.cancel();
+                    mTimer = null;
                     resume_stop_button.setText("再生");
                 }
                 resumeFlag = !resumeFlag;
@@ -114,7 +140,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (requestCode) {
             case PERMISSIONS_REQUEST_CODE:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    //mCursor.moveToFirst();
                     getContentsInfo(0);
                 }
                 break;
@@ -122,6 +147,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
+
+private void autoSlide(){
+
+}
+
 
 
 // permission拒否されたら or cursor = nullだったら
@@ -178,13 +208,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
+
+
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         // アクティビティの終了と共にカーソル破棄
         mCursor.close();
     }
-
-// onDestroyでcursor.close
 
 }
