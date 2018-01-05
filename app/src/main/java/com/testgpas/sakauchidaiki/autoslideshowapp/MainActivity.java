@@ -23,14 +23,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // private cursor　メンバ変数に引き上げた。この場合は初期化はメンバ関数内で行うこと
     private ContentResolver resolver;
     private Cursor mCursor;
+    // 再生・停止ボタンのフラグ
+    boolean resumeFlag = false;
 
+    // C言語とはenumの仕様が違うらしい。。
     protected enum IMG_ID {
         DEFAULT,
         NEXT,
         PREVIOUS
-    }
-
-    ;
+    };
 
 
     @Override
@@ -69,17 +70,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         try {
-            if (v.getId() == R.id.goNext_button) {
-                getContentsInfo(1);
-            } else if (v.getId() == R.id.goBack_button) {
-                getContentsInfo(2);
-            } else if (v.getId() == R.id.resume_stop_button) {
+
+            // 停止中のみ操作可能
+            if(!resumeFlag) {
+                // 進むボタン
+                if (v.getId() == R.id.goNext_button) {
+                    getContentsInfo(1);
+                }
+                // 戻るボタン
+                else if (v.getId() == R.id.goBack_button) {
+                    getContentsInfo(2);
+                }
+            }
+
+            // 再生・停止ボタン
+            if (v.getId() == R.id.resume_stop_button) {
                 // 再生・停止
+                Button resume_stop_button = (Button) findViewById(R.id.resume_stop_button);
+                //　停止中に押したら再生を開始し、ボタンの表示を"停止"に
+                if(!resumeFlag) {
+
+                    resume_stop_button.setText("停止");
+                }
+                // 再生中に押したら停止し、ボタンの表示を"再生"に
+                else{
+
+                    resume_stop_button.setText("再生");
+                }
+                resumeFlag = !resumeFlag;
             }
 
         }
 
-        // 適切な例外に。nullアクセスでいいか？
+        // 適切な例外に。nullアクセスでok？
         catch (NullPointerException e) {
             Log.d("ANDROID", "[例外処理] nullへのアクセスです");
         }
@@ -102,49 +125,55 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
 // permission拒否されたら or cursor = nullだったら
-
     private void getContentsInfo(int checkId) {
 
-        // 1枚目表示。デフォルト
-        if (checkId == 0) {
-            // なぜここで宣言しないといけないか要理解！一度だけで良い？
-            resolver = getContentResolver();
-            mCursor = resolver.query(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, // データの種類
-                    null, // 項目(null = 全項目)
-                    null, // フィルタ条件(null = フィルタなし)
-                    null, // フィルタ用パラメータ
-                    null // ソート (null ソートなし)
-            );
+        // 適切なIDの時だけ対処
+        if(0 <= checkId && checkId <= 2) {
 
-            mCursor.moveToFirst();
-        }
+            // 1枚目表示。デフォルト
+            if (checkId == 0) {
+                // なぜここで宣言しないといけないか要理解！一度だけで良い？
+                resolver = getContentResolver();
+                mCursor = resolver.query(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, // データの種類
+                        null, // 項目(null = 全項目)
+                        null, // フィルタ条件(null = フィルタなし)
+                        null, // フィルタ用パラメータ
+                        null // ソート (null ソートなし)
+                );
 
-        // 「次へ」を押した時。次の画像がなければ始めの画像に
-        else if (checkId == 1) {
-            if (mCursor.moveToNext()) {
-            } else {
                 mCursor.moveToFirst();
             }
-        }
 
-        // 「前へ」を押した時。前の画像がなければ最後の画像に
-        else if (checkId == 2) {
-            if (mCursor.moveToPrevious()) {
-            } else {
-                mCursor.moveToLast();
+            // 「次へ」を押した時。次の画像がなければ始めの画像に
+            else if (checkId == 1) {
+                if (mCursor.moveToNext()) {
+                } else {
+                    mCursor.moveToFirst();
+                }
             }
+
+            // 「前へ」を押した時。前の画像がなければ最後の画像に
+            else if (checkId == 2) {
+                if (mCursor.moveToPrevious()) {
+                } else {
+                    mCursor.moveToLast();
+                }
+            }
+
+            // indexからIDを取得し、そのIDから画像のURIを取得する
+            int fieldIndex = mCursor.getColumnIndex(MediaStore.Images.Media._ID);
+            Long id = mCursor.getLong(fieldIndex);
+            Uri imageUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
+
+            Log.d("ANDROID", "URI : " + imageUri.toString());
+
+            ImageView imageVIew = (ImageView) findViewById(R.id.imageView);
+            imageVIew.setImageURI(imageUri);
         }
-
-        // indexからIDを取得し、そのIDから画像のURIを取得する
-        int fieldIndex = mCursor.getColumnIndex(MediaStore.Images.Media._ID);
-        Long id = mCursor.getLong(fieldIndex);
-        Uri imageUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
-
-        Log.d("ANDROID", "URI : " + imageUri.toString());
-
-        ImageView imageVIew = (ImageView) findViewById(R.id.imageView);
-        imageVIew.setImageURI(imageUri);
+        else{
+            Log.d("ANDROID", "[例外処理] 不正な値が渡されています");
+        }
 
     }
 
